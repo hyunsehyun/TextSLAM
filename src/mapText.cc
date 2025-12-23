@@ -395,7 +395,7 @@ double mapText::GetSgeo(const keyframe* KF, mapText* obj)
         cv::putText(imText, s.str(), cv::Point(5, imText.rows-5), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255), 1, 8);
 
         // show
-        namedWindow(ShowName, CV_WINDOW_NORMAL);
+        namedWindow(ShowName, cv::WINDOW_NORMAL);
         imshow(ShowName, imText);
         waitKey(0);
     }

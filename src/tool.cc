@@ -1767,7 +1767,7 @@ void tool::ShowMatches(const vector<int> &Match12, const cv::Mat &F1Img, const c
         imwrite(SaveName, img_match);
 
     if(SHOW){
-        namedWindow("Matches", CV_WINDOW_NORMAL);
+        namedWindow("Matches", cv::WINDOW_NORMAL);
         imshow("Matches", img_match);
         waitKey(0);
     }
@@ -1795,7 +1795,7 @@ void tool::ShowMatches(const vector<int> &Match12, const Mat &F1Img, const Mat &
 
         Mat img_match;
         cout<<"show match num is: "<<num<<endl;
-        namedWindow("Matches", CV_WINDOW_NORMAL);
+        namedWindow("Matches", cv::WINDOW_NORMAL);
         drawMatches(F1Img, F1Keys, F2Img, F2Keys, match_show, img_match);
         imshow("Matches", img_match);
         waitKey(0);
@@ -1823,7 +1823,7 @@ void tool::ShowMatches(const vector<match> &Match12, const Mat &F1Img, const Mat
 
         Mat img_match;
         cout<<"show match num is: "<<num<<endl;
-        namedWindow("RawMatches", CV_WINDOW_NORMAL);
+        namedWindow("RawMatches", cv::WINDOW_NORMAL);
         drawMatches(F1Img, F1Keys, F2Img, F2Keys, match_show, img_match);
         imshow("RawMatches", img_match);
         waitKey(0);
@@ -1855,7 +1855,7 @@ void tool::ShowMatches(const vector<match> &Match12, const Mat &F1Img, const Mat
     if(SAVE)
         imwrite(SaveName, img_match);
     if(SHOW){
-        namedWindow("RawMatches", CV_WINDOW_NORMAL);
+        namedWindow("RawMatches", cv::WINDOW_NORMAL);
         imshow("RawMatches", img_match);
         waitKey(0);
     }
@@ -1890,7 +1890,7 @@ void tool::ShowMatchesLP(const Mat &F1Img, const Mat &F2Img, const vector<Vec2> 
     drawMatches(F1Img, keys1, F2Img, keys2, match_show, img_match);
 
     if(SHOW){
-        namedWindow("LP Matches", CV_WINDOW_NORMAL);
+        namedWindow("LP Matches", cv::WINDOW_NORMAL);
         imshow("LP Matches", img_match);
         waitKey(0);
     }
@@ -1930,7 +1930,7 @@ void tool::ShowMatchesLP(const Mat &F1Img, const Mat &F2Img, const vector<Vec2> 
     drawMatches(F1Img, keys1, F2Img, keys2, match_show, img_match);
 
     if(SHOW){
-        namedWindow("LP Matches", CV_WINDOW_NORMAL);
+        namedWindow("LP Matches", cv::WINDOW_NORMAL);
         imshow("LP Matches", img_match);
         waitKey(0);
     }
@@ -1976,7 +1976,7 @@ void tool::ShowFeatures(const cv::Mat &Img, const vector<cv::KeyPoint> &Keys, co
     if(SHOW){
         cv::Mat imGrayOut;
         drawKeypoints(Img, Keys, imGrayOut, Scalar(0,0,255));
-        namedWindow("ShowFeatures", CV_WINDOW_NORMAL);
+        namedWindow("ShowFeatures", cv::WINDOW_NORMAL);
         imshow("ShowFeatures", imGrayOut);
         waitKey(0);
     }
@@ -2019,11 +2019,6 @@ cv::Mat tool::ShowTextBoxWithText(const vector<vector<Vec2>> &textbox, const vec
     Scalar Color = Scalar(0, 0, 255);
 
     // obj showMsg
-    CvFont font;
-    cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, 0.4,0.4,0,0.35);          // hScale,vScale,0,lineWidth
-    IplImage tmp = IplImage(Imgdraw);
-    CvArr* src = (CvArr*)&tmp;
-
     for(size_t i0 = 0; i0<textbox.size(); i0++){
         vector<Vec2> Box4Pts = textbox[i0];
         line(Imgdraw, cv::Point2d(Box4Pts[0](0), Box4Pts[0](1)), cv::Point2d(Box4Pts[1](0), Box4Pts[1](1)), Color);
@@ -2032,10 +2027,10 @@ cv::Mat tool::ShowTextBoxWithText(const vector<vector<Vec2>> &textbox, const vec
         line(Imgdraw, cv::Point2d(Box4Pts[3](0), Box4Pts[3](1)), cv::Point2d(Box4Pts[0](0), Box4Pts[0](1)), Color);
 
         // 3. show obj id & mean
-        cvPutText(src, vShowText[i0].c_str(), cvPoint(Box4Pts[0](0), Box4Pts[0](1)), &font,CV_RGB(255,255,0));
+        cv::putText(Imgdraw, vShowText[i0].c_str(), cv::Point(Box4Pts[0](0), Box4Pts[0](1)), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0,255,255), 1);
     }
 
-    namedWindow(ShowName, CV_WINDOW_NORMAL);
+    namedWindow(ShowName, cv::WINDOW_NORMAL);
     imshow(ShowName, Imgdraw);
     waitKey(0);
 
@@ -2047,18 +2042,13 @@ cv::Mat tool::ShowTextBoxSingle(const Mat &Img, const vector<Vec2> &Pred, const 
     Mat Imgdraw = Img.clone();
     Scalar Color = Scalar(0, 0, 255);
     // obj showMsg
-    CvFont font;
-    cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, 0.4,0.4,0,0.35);          // hScale,vScale,0,lineWidth
-    IplImage tmp = IplImage(Imgdraw);
-    CvArr* src = (CvArr*)&tmp;
-
     line(Imgdraw, cv::Point2d(Pred[0](0), Pred[0](1)), cv::Point2d(Pred[1](0), Pred[1](1)), Color);
     line(Imgdraw, cv::Point2d(Pred[1](0), Pred[1](1)), cv::Point2d(Pred[2](0), Pred[2](1)), Color);
     line(Imgdraw, cv::Point2d(Pred[2](0), Pred[2](1)), cv::Point2d(Pred[3](0), Pred[3](1)), Color);
     line(Imgdraw, cv::Point2d(Pred[3](0), Pred[3](1)), cv::Point2d(Pred[0](0), Pred[0](1)), Color);
 
     string showMsg = to_string(ObjId);
-    cvPutText(src, showMsg.c_str(), cvPoint(Pred[0](0), Pred[0](1)), &font,CV_RGB(255,255,0));
+    cv::putText(Imgdraw, showMsg.c_str(), cv::Point(Pred[0](0), Pred[0](1)), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0,255,255), 1);
 
     return Imgdraw;
 }
@@ -2071,11 +2061,6 @@ vector<cv::Mat> tool::TextBoxWithFill(const vector<vector<Vec2>> &textbox, const
     Scalar Color = Scalar(0, 0, 255);
 
     // obj id show
-    CvFont font;
-    cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, 0.4,0.4,0,0.35);          // hScale,vScale,0,lineWidth
-    IplImage tmp = IplImage(Imgdraw);
-    CvArr* src = (CvArr*)&tmp;
-
     for(size_t i0 = 0; i0<textbox.size(); i0++){
         // 1. get text label
         BackImg = GetTextLabelMask(BackImg, textbox[i0], textLabel[i0]);         // CHECK, cv::Mat put pointer into func. maybe return the new mat to the same pointer
@@ -2089,7 +2074,7 @@ vector<cv::Mat> tool::TextBoxWithFill(const vector<vector<Vec2>> &textbox, const
 
         // 3. show obj id
         string showMsg = to_string(vObjId[i0]);
-        cvPutText(src, showMsg.c_str(), cvPoint(Box4Pts[0](0), Box4Pts[0](1)), &font,CV_RGB(255,255,0));
+        cv::putText(Imgdraw, showMsg.c_str(), cv::Point(Box4Pts[0](0), Box4Pts[0](1)), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0,255,255), 1);
 
     }
 
@@ -2107,11 +2092,6 @@ vector<cv::Mat> tool::TextBoxWithFill(const vector<vector<Vec2>> &textbox, const
     Scalar Color = Scalar(0, 0, 255);
 
     // obj id show
-    CvFont font;
-    cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, 0.4,0.4,0,0.35);          // hScale,vScale,0,lineWidth
-    IplImage tmp = IplImage(Imgdraw);
-    CvArr* src = (CvArr*)&tmp;
-
     for(size_t i0 = 0; i0<textbox.size(); i0++){
         // 1. get text label
         BackImg = GetTextLabelMask(BackImg, textbox[i0], textLabel[i0]);         // CHECK, cv::Mat put pointer into func. maybe return the new mat to the same pointer
@@ -2126,7 +2106,7 @@ vector<cv::Mat> tool::TextBoxWithFill(const vector<vector<Vec2>> &textbox, const
         // 3. show obj id
         string showMsg = to_string(vObjId[i0]);
         showMsg += textinfo[i0].mean;
-        cvPutText(src, showMsg.c_str(), cvPoint(Box4Pts[0](0), Box4Pts[0](1)), &font,CV_RGB(255,255,0));
+        cv::putText(Imgdraw, showMsg.c_str(), cv::Point(Box4Pts[0](0), Box4Pts[0](1)), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0,255,255), 1);
 
     }
 
@@ -2157,7 +2137,7 @@ cv::Mat tool::GetTextLabelMask(const cv::Mat &BackImg, const vector<Vec2> &TextO
         cv::Mat ImgZero = cv::Mat::zeros(BackImg.size(),CV_8UC1);
         cv::fillPoly(ImgZero, ptMask, npt, 1, cv::Scalar(255,255,255));
 
-        cv::namedWindow("ImgZero", CV_WINDOW_NORMAL);
+        cv::namedWindow("ImgZero", cv::WINDOW_NORMAL);
         cv::imshow("ImgZero", ImgZero);
         cv::waitKey(0);
     }
@@ -2250,7 +2230,7 @@ void tool::ShowMatchesLP(const Mat &F1Img, const Mat &F2Img, const vector<Featur
     drawMatches(F1Img, keys1, F2Img, keys2, match_show, img_match);
 
     if(SHOW){
-        namedWindow("LP Matches", CV_WINDOW_NORMAL);
+        namedWindow("LP Matches", cv::WINDOW_NORMAL);
         imshow("LP Matches", img_match);
         waitKey(0);
     }
@@ -2261,7 +2241,7 @@ void tool::ShowMatchesLP(const Mat &F1Img, const Mat &F2Img, const vector<Featur
 
 void tool::ShowImg(const cv::Mat &ImgDraw, const string &name)
 {
-    cv::namedWindow(name, CV_WINDOW_NORMAL);
+    cv::namedWindow(name, cv::WINDOW_NORMAL);
     cv::imshow(name, ImgDraw);
     cv::waitKey(0);
 }

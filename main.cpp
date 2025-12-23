@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         assert(vTextDete.size()==vTextMean.size());
 
         // b) Read image info
-        im = cv::imread(Set.sReadPath + vImg_Name[ni], CV_LOAD_IMAGE_UNCHANGED);
+        im = cv::imread(Set.sReadPath + vImg_Name[ni], cv::IMREAD_UNCHANGED);
         double tframe = vImg_Time[ni];
         if(im.empty()){
             cerr << endl << "Failed to load image at: "

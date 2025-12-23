@@ -68,9 +68,9 @@ int tracking::GrabImageMonocular(const cv::Mat &im, const double &ImgTimeStamp, 
     cv::Mat ImTrack, ImTrack1;
     im.copyTo(ImTrack);
     if(Set->Flag_RGB==0)
-        cvtColor(ImTrack, ImTrack, CV_BGR2GRAY);
+        cvtColor(ImTrack, ImTrack, cv::COLOR_BGR2GRAY);
     else if(Set->Flag_RGB==1)
-        cvtColor(ImTrack, ImTrack, CV_RGB2GRAY);
+        cvtColor(ImTrack, ImTrack, cv::COLOR_RGB2GRAY);
 
     Width = ImTrack.cols;
     Height = ImTrack.rows;

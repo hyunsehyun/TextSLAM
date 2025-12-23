@@ -648,7 +648,7 @@ int optimizer::OptimizeSim3(vector<FeatureConvert> &vFeat1, vector<FeatureConver
     std::chrono::steady_clock::time_point t_begin_T = std::chrono::steady_clock::now();
 
     ceres::Problem problem;
-    problem.AddParameterBlock(Sim3Pose, 4, new ceres::QuaternionParameterization());
+    problem.AddParameterBlock(Sim3Pose, 4, new ceres::QuaternionManifold());
     problem.AddParameterBlock(Sim3Pose+4, 3);
     problem.AddParameterBlock(Sim3Pose+7, 1);
 
@@ -784,7 +784,7 @@ void optimizer::OptimizeLoop(std::map<keyframe*, set<keyframe*>> &LoopConnection
     ceres::Problem problem;
     for(size_t iprob=0; iprob<vKFs.size(); iprob++){
         int KFId = vKFs[iprob]->mnId;
-        problem.AddParameterBlock(pose[KFId], 4, new ceres::QuaternionParameterization());
+        problem.AddParameterBlock(pose[KFId], 4, new ceres::QuaternionManifold());
         problem.AddParameterBlock(pose[KFId]+4, 3);
         problem.AddParameterBlock(pose[KFId]+7, 1);
     }
@@ -976,7 +976,7 @@ void optimizer::PyrIniBA(ceres::Problem *problem, vector<keyframe*> KF, double *
     std::chrono::steady_clock::time_point t_begin_T = std::chrono::steady_clock::now();
 
     if(FLAG_SCENE){
-        problem->AddParameterBlock(pose[1], 4, new ceres::QuaternionParameterization());
+        problem->AddParameterBlock(pose[1], 4, new ceres::QuaternionManifold());
         problem->AddParameterBlock(pose[1]+4, 3);
         LossFunction* loss_function = new HuberLoss(3.0);
 
@@ -1111,7 +1111,7 @@ void optimizer::PyrPoseOptim(frame &F, double *pose, vector<SceneObservation*> S
     vector<int> vIdx2vPtsGood;
     if(FLAG_SCENE){
         // a)
-        problem.AddParameterBlock(pose, 4, new ceres::QuaternionParameterization());
+        problem.AddParameterBlock(pose, 4, new ceres::QuaternionManifold());
         problem.AddParameterBlock(pose+4, 3);
         LossFunction* loss_function = new HuberLoss(sqrt(5.991));
 
@@ -1158,7 +1158,7 @@ void optimizer::PyrPoseOptim(frame &F, double *pose, vector<SceneObservation*> S
     if(FLAG_TEXT){
 
         if(!FLAG_SCENE){
-            problem.AddParameterBlock(pose, 4, new ceres::QuaternionParameterization());
+            problem.AddParameterBlock(pose, 4, new ceres::QuaternionManifold());
             problem.AddParameterBlock(pose+4, 3);
         }
         LossFunction* loss_function = new HuberLoss(3.0);
@@ -1364,7 +1364,7 @@ void optimizer::PyrBA(double **pose, double **theta, double **rho, const vector<
     vector<int> vIdx2vPtsGood, vIdxS2vKFs;
     if(FLAG_SCENE){
         for(size_t iKF=0; iKF<vKFs.size(); iKF++){
-            problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionParameterization());
+            problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionManifold());
             problem.AddParameterBlock(pose[iKF]+4, 3);
             LossFunction* loss_function = new HuberLoss(sqrt(5.991));
 
@@ -1448,7 +1448,7 @@ void optimizer::PyrBA(double **pose, double **theta, double **rho, const vector<
         for(size_t iKF=0; iKF<vKFs.size(); iKF++)
         {
             if(!FLAG_SCENE){
-                problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionParameterization());
+                problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionManifold());
                 problem.AddParameterBlock(pose[iKF]+4, 3);
             }
             LossFunction* loss_function = new HuberLoss(3.0);
@@ -1719,7 +1719,7 @@ void optimizer::PyrGlobalBA(double **pose, double **theta, double **rho, const v
     {
         for(size_t iKF=0; iKF<vKFs.size(); iKF++)
         {
-            problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionParameterization());
+            problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionManifold());
             problem.AddParameterBlock(pose[iKF]+4, 3);
             LossFunction* loss_function = new HuberLoss(sqrt(5.991));
 
@@ -1768,7 +1768,7 @@ void optimizer::PyrGlobalBA(double **pose, double **theta, double **rho, const v
         for(size_t iKF=0; iKF<vKFs.size(); iKF++)
         {
             if(!FLAG_SCENE){
-                problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionParameterization());
+                problem.AddParameterBlock(pose[iKF], 4, new ceres::QuaternionManifold());
                 problem.AddParameterBlock(pose[iKF]+4, 3);
             }
             LossFunction* loss_function = new HuberLoss(3.0);
