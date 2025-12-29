@@ -865,6 +865,8 @@ void tracking::TrackNewKeyframe()
         RecordLandmarks();
         RecordTextObvs_KFfull(CurKF);
     }
+    // Always compute reprojection error for evaluation
+    ComputeAndRecordReprojectionError(CurKF);
     InitialNewTextFeatForTrack(CurKF);
     cfLastKeyframe = CurKF;
 
@@ -2877,6 +2879,274 @@ Vec2 tracking::ProjSceneInKF(mapPts* mpt, keyframe* KF)
     double u = mK(0,0) * p(0,0)/p(2,0) + mK(0,2);
     double v = mK(1,1) * p(1,0)/p(2,0) + mK(1,2);
     return Vec2(u, v);
+}
+
+// ========================================================================
+// Reprojection Error Calculation Functions
+// ========================================================================
+
+void tracking::ComputeAndRecordReprojectionError(const keyframe* KF)
+{
+    // DEBUG: Log function call
+    cout << "[Reprojection] Processing KF #" << KF->mnId
+         << " with " << KF->vObvText.size() << " text observations" << endl;
+
+    ofstream outfile("Text_reprojection_error.txt", ios::app);
+
+    // Check if file opened successfully
+    if (!outfile.is_open()) {
+        cout << "[ERROR] Failed to open Text_reprojection_error.txt for writing!" << endl;
+        return;
+    }
+
+    // Header: keyframe info
+    outfile << "KF_id=" << KF->mnId
+            << ",frame_id=" << KF->mnFrameId
+            << ",timestamp=" << fixed << setprecision(6) << KF->dTimeStamp << endl;
+
+    // Need to remove const to call GetTcw() - create mutable copy
+    keyframe* KF_mutable = const_cast<keyframe*>(KF);
+    Mat44 Tcw = KF_mutable->GetTcw();
+    Mat33 K = KF->mK;
+
+    // Iterate all text observations in this keyframe
+    vector<TextObservation*> TextObvs = KF->vObvText;
+
+    // DEBUG: Count observations by state
+    int total_obvs = TextObvs.size();
+    int good_obvs = 0;
+    int skipped_state = 0;
+
+    for (size_t i = 0; i < TextObvs.size(); i++) {
+        mapText* textObj = TextObvs[i]->obj;
+
+        // Skip non-good text objects
+        if (textObj->STATE != TEXTGOOD) {
+            skipped_state++;
+            continue;
+        }
+
+        good_obvs++;
+
+        // Get text landmark ID and observation index
+        int text_id = textObj->mnId;
+        vector<int> obv_idx = TextObvs[i]->idx;
+
+        if (obv_idx.empty()) continue;
+        int det_idx = obv_idx[0];  // First detection index
+
+        // Check if detection index is valid
+        if (det_idx >= KF->vTextDete.size()) continue;
+
+        // Get 3D plane parameters in reference frame
+        Mat44 Trw = textObj->RefKF->GetTcw();
+        Mat44 Tcr = Tcw * Trw.inverse();  // Transform: ref -> current
+        Mat31 theta_r = textObj->RefKF->mNcr[textObj->GetNidx()];
+
+        // Get reference corner rays (4 corners of bounding box)
+        vector<Vec2> refCorners = textObj->vTextDeteRay;
+
+        // Get detected corners in current keyframe
+        vector<Vec2> detectedCorners = KF->vTextDete[det_idx];
+
+        // Check if both have 4 corners
+        if (refCorners.size() != 4 || detectedCorners.size() != 4) continue;
+
+        // Compute 3D center point from 4 corners
+        Mat31 P_3d_center_ref(0, 0, 0);
+        int valid_corners_3d = 0;
+
+        for (size_t c = 0; c < 4; c++) {
+            Mat31 ray(refCorners[c](0), refCorners[c](1), 1.0);
+            double inv_depth = -ray.transpose() * theta_r;
+
+            if (inv_depth > 0) {  // Valid depth
+                Mat31 P_3d = ray / inv_depth;
+                P_3d_center_ref += P_3d;
+                valid_corners_3d++;
+            }
+        }
+
+        if (valid_corners_3d < 3) continue;  // Need at least 3 corners
+        P_3d_center_ref /= valid_corners_3d;
+
+        // Transform center to current camera frame
+        Mat31 P_3d_center_current = Tcr.block<3,3>(0,0) * P_3d_center_ref + Tcr.block<3,1>(0,3);
+
+        // Check if in front of camera
+        if (P_3d_center_current(2,0) <= 0) continue;
+
+        // Project center to image
+        double u_proj = K(0,0) * P_3d_center_current(0,0) / P_3d_center_current(2,0) + K(0,2);
+        double v_proj = K(1,1) * P_3d_center_current(1,0) / P_3d_center_current(2,0) + K(1,2);
+
+        // Compute detected center (average of 4 corners)
+        double u_det = 0, v_det = 0;
+        for (size_t c = 0; c < 4; c++) {
+            u_det += detectedCorners[c](0);
+            v_det += detectedCorners[c](1);
+        }
+        u_det /= 4.0;
+        v_det /= 4.0;
+
+        // Compute reprojection error
+        double error = sqrt((u_proj - u_det) * (u_proj - u_det) +
+                           (v_proj - v_det) * (v_proj - v_det));
+
+        // Get text semantic info
+        string text_str = textObj->TextMean.mean;
+
+        // Record per-observation error
+        outfile << "text_id=" << text_id
+                << ",text=\"" << text_str << "\""
+                << ",proj=(" << u_proj << "," << v_proj << ")"
+                << ",detected=(" << u_det << "," << v_det << ")"
+                << ",error=" << error << endl;
+    }
+
+    outfile << "---" << endl;  // Separator
+    outfile.close();
+
+    // DEBUG: Print statistics
+    cout << "[Reprojection] KF #" << KF->mnId << " summary:"
+         << " total_obvs=" << total_obvs
+         << ", TEXTGOOD=" << good_obvs
+         << ", skipped=" << skipped_state << endl;
+}
+
+void tracking::SaveReprojectionSummary()
+{
+    ifstream infile("Text_reprojection_error.txt");
+    if (!infile.is_open()) {
+        cout << "Warning: Text_reprojection_error.txt not found, skipping summary generation." << endl;
+        return;
+    }
+
+    // Parse all errors and group by landmark
+    std::map<int, vector<double>> landmark_errors;  // landmark_id -> list of errors
+    std::map<int, string> landmark_texts;  // landmark_id -> text string
+    std::map<int, int> landmark_obs_count;  // landmark_id -> observation count
+
+    string line;
+    while (getline(infile, line)) {
+        if (line.find("text_id=") != string::npos) {
+            // Parse text_id
+            size_t id_pos = line.find("text_id=") + 8;
+            size_t comma_pos = line.find(",", id_pos);
+            int text_id = stoi(line.substr(id_pos, comma_pos - id_pos));
+
+            // Parse error
+            size_t error_pos = line.find("error=") + 6;
+            double error = stod(line.substr(error_pos));
+
+            // Parse text
+            size_t text_start = line.find("text=\"") + 6;
+            size_t text_end = line.find("\"", text_start);
+            string text_str = line.substr(text_start, text_end - text_start);
+
+            landmark_errors[text_id].push_back(error);
+            landmark_texts[text_id] = text_str;
+            landmark_obs_count[text_id]++;
+        }
+    }
+    infile.close();
+
+    // Compute per-landmark statistics
+    ofstream summary_file("Text_reprojection_summary.txt");
+    summary_file << "=== TextSLAM Reprojection Error Summary ===" << endl << endl;
+    summary_file << "landmark_id,text,num_observations,mean_error,std_error,min_error,max_error" << endl;
+
+    vector<double> all_errors;
+    vector<double> weighted_errors;
+    vector<double> weights;
+
+    for (auto& pair : landmark_errors) {
+        int landmark_id = pair.first;
+        vector<double>& errors = pair.second;
+
+        if (errors.empty()) continue;
+
+        // Compute statistics
+        double mean_error = 0;
+        for (double e : errors) mean_error += e;
+        mean_error /= errors.size();
+
+        double std_error = 0;
+        for (double e : errors) std_error += (e - mean_error) * (e - mean_error);
+        std_error = sqrt(std_error / errors.size());
+
+        double min_error = *min_element(errors.begin(), errors.end());
+        double max_error = *max_element(errors.begin(), errors.end());
+
+        summary_file << landmark_id << ",\"" << landmark_texts[landmark_id] << "\","
+                    << errors.size() << "," << mean_error << "," << std_error << ","
+                    << min_error << "," << max_error << endl;
+
+        // Accumulate for global statistics
+        for (double e : errors) all_errors.push_back(e);
+
+        // Weighted by sqrt(num_obs)
+        double weight = sqrt((double)errors.size());
+        weighted_errors.push_back(mean_error);
+        weights.push_back(weight);
+    }
+
+    // Global statistics
+    summary_file << endl << "=== Global Statistics ===" << endl;
+
+    // Overall mean
+    double global_mean = 0;
+    for (double e : all_errors) global_mean += e;
+    global_mean /= all_errors.size();
+
+    // Weighted mean
+    double weighted_mean = 0, total_weight = 0;
+    for (size_t i = 0; i < weighted_errors.size(); i++) {
+        weighted_mean += weighted_errors[i] * weights[i];
+        total_weight += weights[i];
+    }
+    weighted_mean /= total_weight;
+
+    // Histogram bins
+    vector<int> histogram(8, 0);  // [0-1], [1-2], [2-3], [3-4], [4-5], [5-7], [7-10], [>10]
+    for (double e : all_errors) {
+        if (e < 1) histogram[0]++;
+        else if (e < 2) histogram[1]++;
+        else if (e < 3) histogram[2]++;
+        else if (e < 4) histogram[3]++;
+        else if (e < 5) histogram[4]++;
+        else if (e < 7) histogram[5]++;
+        else if (e < 10) histogram[6]++;
+        else histogram[7]++;
+    }
+
+    summary_file << "Total observations: " << all_errors.size() << endl;
+    summary_file << "Total landmarks: " << landmark_errors.size() << endl;
+    summary_file << "Overall mean error: " << global_mean << " pixels" << endl;
+    summary_file << "Weighted mean error: " << weighted_mean << " pixels (weighted by sqrt(num_obs))" << endl;
+
+    summary_file << endl << "=== Error Distribution ===" << endl;
+    summary_file << "0-1 px:   " << histogram[0] << " (" << (100.0*histogram[0]/all_errors.size()) << "%)" << endl;
+    summary_file << "1-2 px:   " << histogram[1] << " (" << (100.0*histogram[1]/all_errors.size()) << "%)" << endl;
+    summary_file << "2-3 px:   " << histogram[2] << " (" << (100.0*histogram[2]/all_errors.size()) << "%)" << endl;
+    summary_file << "3-4 px:   " << histogram[3] << " (" << (100.0*histogram[3]/all_errors.size()) << "%)" << endl;
+    summary_file << "4-5 px:   " << histogram[4] << " (" << (100.0*histogram[4]/all_errors.size()) << "%)" << endl;
+    summary_file << "5-7 px:   " << histogram[5] << " (" << (100.0*histogram[5]/all_errors.size()) << "%)" << endl;
+    summary_file << "7-10 px:  " << histogram[6] << " (" << (100.0*histogram[6]/all_errors.size()) << "%)" << endl;
+    summary_file << ">10 px:   " << histogram[7] << " (" << (100.0*histogram[7]/all_errors.size()) << "%)" << endl;
+
+    int cumulative_3px = histogram[0] + histogram[1] + histogram[2];
+    int cumulative_5px = cumulative_3px + histogram[3] + histogram[4];
+    summary_file << endl << "Cumulative (<=3px): " << (100.0*cumulative_3px/all_errors.size()) << "%" << endl;
+    summary_file << "Cumulative (<=5px): " << (100.0*cumulative_5px/all_errors.size()) << "%" << endl;
+
+    summary_file.close();
+
+    cout << "=== TextSLAM Reprojection Error Summary ===" << endl;
+    cout << "Total observations: " << all_errors.size() << endl;
+    cout << "Total landmarks: " << landmark_errors.size() << endl;
+    cout << "Weighted mean error: " << weighted_mean << " pixels" << endl;
+    cout << "Summary saved to Text_reprojection_summary.txt" << endl;
 }
 
 

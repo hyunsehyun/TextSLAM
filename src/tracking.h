@@ -36,6 +36,10 @@ public:
 
     void RecordKeyFrameSys(string &name);
 
+    // reprojection error (public for system.cc to call)
+    void ComputeAndRecordReprojectionError(const keyframe* KF);
+    void SaveReprojectionSummary();
+
 public:
     static const int TH_LOW;
     static const int TH_HIGH;

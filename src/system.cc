@@ -47,6 +47,9 @@ void system::RecordKeyFrame()
 {
     string name = "keyframe.txt";
     Tracking->RecordKeyFrameSys(name);
+
+    // Generate reprojection error summary
+    Tracking->SaveReprojectionSummary();
 }
 
 }
