@@ -621,6 +621,7 @@ bool optimizer::ThetaOptimMultiFs(const frame &F, mapText* &obj)
     obj->RefKF->SetN(thetaNew, obj->GetNidx());
     obj->Covariance = thetaVariance;
 
+    return true;  // BUG FIX: Missing return statement
 }
 
 int optimizer::OptimizeSim3(vector<FeatureConvert> &vFeat1, vector<FeatureConvert> &vFeat2, vector<bool> &vbInliers, Sim3_loop &Sim12, const float th2)
