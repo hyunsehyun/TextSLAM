@@ -106,7 +106,7 @@ arena,0.9879826307296753
 
 ```bash
 cd ~/ros2_ws/src/TextSLAM
-./build/text_slam ./output/custom_indoor.yaml
+./build/TextSLAM ./custom_dataset/coex_0108_1/coex_0108_1.yam
 ```
 
 ## 카메라 파라미터 수정
