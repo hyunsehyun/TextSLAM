@@ -93,6 +93,47 @@ int main(int argc, char **argv)
     // "keyframe.txt"
     SLAM.RecordKeyFrame();
 
+    // ---- Timing Statistics (same format as NavOCR/PaddleOCR for fair comparison) ----
+    if (vImg_num > 0) {
+        double total_time = 0.0;
+        double min_time = vTimePerImg[0];
+        double max_time = vTimePerImg[0];
+        for (size_t i = 0; i < vImg_num; i++) {
+            total_time += vTimePerImg[i];
+            if (vTimePerImg[i] < min_time) min_time = vTimePerImg[i];
+            if (vTimePerImg[i] > max_time) max_time = vTimePerImg[i];
+        }
+        double avg_time = total_time / vImg_num;
+
+        cout << "============================================================" << endl;
+        cout << "TextSLAM Final Statistics:" << endl;
+        cout << "  Total frames: " << vImg_num << endl;
+        cout << "  Total processing time: " << total_time << "s" << endl;
+        cout << "  Avg processing time: " << avg_time << "s" << endl;
+        cout << "  Min processing time: " << min_time << "s" << endl;
+        cout << "  Max processing time: " << max_time << "s" << endl;
+        cout << "  Avg FPS: " << 1.0 / avg_time << endl;
+        cout << "============================================================" << endl;
+
+        // Save timing data to file
+        string timing_file = Set.sReadPath + "timing_statistics.txt";
+        ofstream timing_out(timing_file);
+        if (timing_out.is_open()) {
+            timing_out << "=== TextSLAM Timing Statistics ===" << endl;
+            timing_out << "Total frames: " << vImg_num << endl;
+            timing_out << "Total processing time: " << total_time << "s" << endl;
+            timing_out << "Avg processing time: " << avg_time << "s" << endl;
+            timing_out << "Min processing time: " << min_time << "s" << endl;
+            timing_out << "Max processing time: " << max_time << "s" << endl;
+            timing_out << "Avg FPS: " << 1.0 / avg_time << endl;
+            timing_out << endl << "Per-frame timing (seconds):" << endl;
+            for (size_t i = 0; i < vImg_num; i++) {
+                timing_out << i << "," << vTimePerImg[i] << endl;
+            }
+            timing_out.close();
+            cout << "Timing statistics saved to: " << timing_file << endl;
+        }
+    }
 
     return 0;
 }
